@@ -1,36 +1,136 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Getting Started
+# mail-pal
 
-First, run the development server:
+Your inbox doesn't know what matters. Job offers, invoices, and newsletters all get the same treatment — buried in chronological order. **mail-pal** fixes that: it connects to Gmail, classifies incoming mail by priority and category, and surfaces what actually needs your attention.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+- 🔐 **Secure Google OAuth2 login** — sign in with your Google account, no passwords stored
+- 📬 **Gmail integration** — crawls your inbox via the Gmail API and keeps it in sync
+- 🏷️ **Priority classification** — automatic categorization (Professional, Academic, Logistics, etc.) with keyword-based rules you control
+- 🔔 **Real-time notifications** — WebSocket-powered alerts the moment something important lands
+- 🌗 **Dark mode** — full light/dark theme support
+- 🔑 **API key access** — Argon2id-hashed keys for programmatic access to your prioritized inbox
+- 🛡️ **Hardened auth** — HttpOnly cookie sessions, refresh token rotation, and IP-based rate limiting (no tokens ever touch client-side JS)
+
+## Tech stack
+
+**Backend**
+- [Rust](https://www.rust-lang.org/) + [Axum](https://github.com/tokio-rs/axum) — async web framework
+- [PostgreSQL](https://www.postgresql.org/) via [Neon](https://neon.tech/) — serverless Postgres
+- [Redis](https://redis.io/) via [Upstash](https://upstash.com/) — caching & rate limiting
+- [Tokio](https://tokio.rs/) — background workers for Gmail crawling
+- [sqlx](https://github.com/launchbadge/sqlx) — compile-time checked SQL
+- Argon2id — password/API key/refresh token hashing
+- JWT (access tokens) + rotating refresh tokens, delivered via HttpOnly cookies
+
+**Frontend**
+- [Next.js](https://nextjs.org/) (App Router)
+- [Redux Toolkit](https://redux-toolkit.js.org/) — state management
+- [Tailwind CSS v4](https://tailwindcss.com/) — styling, class-based dark mode
+- WebSocket client for live notifications
+
+## Architecture
+
+```
+┌─────────────┐      OAuth2       ┌──────────────┐
+│   Browser    │ ────────────────▶│  Google OAuth │
+│  (Next.js)   │◀──────────────── │              │
+└──────┬───────┘   HttpOnly       └──────────────┘
+       │            cookies
+       │ REST + WS
+       ▼
+┌─────────────┐                   ┌──────────────┐
+│  Rust/Axum   │ ────────────────▶│   Gmail API   │
+│   Backend    │                  └──────────────┘
+└──────┬───────┘
+       │
+   ┌───┴────┐
+   ▼        ▼
+┌──────┐ ┌───────┐
+│Neon  │ │Upstash│
+│(PG)  │ │(Redis)│
+└──────┘ └───────┘
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Authentication flow
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. User clicks **Continue with Google** → redirected to Google's consent screen
+2. Google redirects back to `/auth/google/callback` with an authorization code
+3. Backend exchanges the code for Google tokens, fetches the user's profile, and finds/creates the user record
+4. Backend issues a short-lived JWT (15 min) and a rotating refresh token (7 days), both set as **HttpOnly, SameSite cookies** — never exposed to JavaScript
+5. Frontend reads only a non-sensitive `user_id` cookie to know it's logged in
+6. When the access token expires, an axios interceptor silently calls `/auth/refresh` and retries the original request — no re-login required unless the refresh token itself has expired
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+This design keeps tokens completely inaccessible to any injected script, closing the XSS token-theft attack surface that comes with storing JWTs in `localStorage`.
 
-## Learn More
+## Getting started
 
-To learn more about Next.js, take a look at the following resources:
+### Prerequisites
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- Rust (stable, 1.91+)
+- Node.js 18+
+- A PostgreSQL database (e.g. a free [Neon](https://neon.tech/) instance)
+- A Redis instance (e.g. a free [Upstash](https://upstash.com/) instance)
+- A Google Cloud project with OAuth2 credentials and the Gmail API enabled
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Backend setup
 
-## Deploy on Vercel
+```bash
+git clone https://github.com/<your-username>/mail-pal.git
+cd mail-pal/backend
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+cp .env.example .env
+# fill in DATABASE_URL, REDIS_URL, GOOGLE_CLIENT_ID,
+# GOOGLE_CLIENT_SECRET, GOOGLE_REDIRECT_URI, JWT_SECRET, FRONTEND_URL
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+cargo build
+cargo run
+```
+
+### Frontend setup
+
+```bash
+cd mail-pal/mail-pal-frontend
+
+cp .env.example .env.local
+# fill in NEXT_PUBLIC_API_URL
+
+npm install
+npm run dev
+```
+
+Visit `http://localhost:3000` and sign in with Google.
+
+## Environment variables
+
+**Backend (`.env`)**
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `GOOGLE_CLIENT_ID` | Google OAuth2 client ID |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth2 client secret |
+| `GOOGLE_REDIRECT_URI` | OAuth2 callback URL (e.g. `http://localhost:3001/auth/google/callback`) |
+| `JWT_SECRET` | Secret used to sign JWTs |
+| `FRONTEND_URL` | Frontend origin, used for post-login redirect and CORS |
+| `APP_ENV` | `production` enables `Secure` cookies; unset/dev otherwise |
+
+**Frontend (`.env.local`)**
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | Base URL of the backend API |
+
+## Roadmap
+
+- [x] Rust/Axum backend with Gmail crawler and background workers
+- [x] Google OAuth2 with secure HttpOnly cookie sessions
+- [x] Priority classification + keyword management
+- [x] Real-time WebSocket notifications
+- [x] Dark mode
+- [ ] Full Next.js + Redux Toolkit frontend (in progress)
+- [ ] Custom classification rules per label/sender
+- [ ] Mobile-responsive polish
+
