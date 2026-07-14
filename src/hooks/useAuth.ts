@@ -6,9 +6,9 @@ import { useEffect } from "react";
 export const useAuth = () => {
   const dispatch = useDispatch();
 
-  const loginWithGoogle = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/auth/google/login`;
-  };
+const loginWithGoogle = () => {
+  window.location.href = `/api/auth/google/login`;
+};
 
   const logout = async () => {
     await clearCookies();

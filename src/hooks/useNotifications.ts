@@ -17,24 +17,26 @@ export const useNotifications = () => {
     }
   };
 
-  const connectWebSocket = () => {
-    const base  = process.env.NEXT_PUBLIC_API_URL!;
-    const wsUrl = base.replace("https://", "wss://").replace("http://", "ws://");
-    // No token needed in the URL — the browser sends the HttpOnly cookie
-    // automatically with the WS handshake request.
-    const ws = new WebSocket(`${wsUrl}/notifications/ws`);
+    const connectWebSocket = () => {
+  
+    if (typeof window === "undefined") return;
+    const base = window.location.origin;
+    const wsBase = process.env.NEXT_PUBLIC_WS_URL;
+    if (!wsBase) return; // skip if not configured
+    const ws = new WebSocket(`${wsBase}/notifications/ws`);
+    // ... rest of handler
 
-    ws.onmessage = (event) => {
-      try {
-        const notification = JSON.parse(event.data);
-        dispatch(addNotification(notification));
-      } catch { /* ignore malformed frames */ }
+      ws.onmessage = (event) => {
+        try {
+          const notification = JSON.parse(event.data);
+          dispatch(addNotification(notification));
+        } catch { /* ignore malformed frames */ }
+      };
+
+      ws.onerror = () => console.error("WebSocket error");
+
+      return () => ws.close();
     };
-
-    ws.onerror = () => console.error("WebSocket error");
-
-    return () => ws.close();
-  };
 
   useEffect(() => {
     fetchNotifications();

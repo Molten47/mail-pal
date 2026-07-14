@@ -6,16 +6,18 @@ import { RootState } from "@/store";
 import { useMail } from "@/hooks/useMail";
 import { useAuth } from "@/hooks/useAuth";
 import MailCard from "@/components/MailCard";
-import NotificationBell from "@/components/NotificationBell";
 import KeywordManager from "@/components/KeywordsManager";
 import ThemeToggle from "@/components/ThemeToggle";
+
 
 export default function DashboardPage() {
   const router                               = useRouter();
   const { isLoggedIn }                       = useSelector((s: RootState) => s.auth);
-  const { items, loading, error, fetchMail } = useMail();
+  const { items, loading, error, fetchMail, loadingMore, hasMore,fetchMoreMail } = useMail();
   const { logout, initAuth }                 = useAuth();
   const [hydrated, setHydrated]              = useState(false);
+
+  
 
   // Step 1 — restore auth from localStorage before anything else
 // Step 1 — restore auth state, then mark hydration complete
@@ -42,7 +44,6 @@ export default function DashboardPage() {
        <h1 className="text-xl font-bold text-gray-900 dark:text-white">mail-pal</h1>
        <div className="flex items-center gap-3">
           <ThemeToggle />
-          <NotificationBell />
           <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-800 transition-colors">
             Sign out
           </button>
@@ -62,6 +63,18 @@ export default function DashboardPage() {
             <p className="text-gray-400 text-sm">No priority emails yet. Check back soon.</p>
           )}
         </div>
+
+        {hasMore && items.length > 0 && (
+          <div className="mt-4 flex justify-center">
+            <button
+              onClick={fetchMoreMail}
+              disabled={loadingMore}
+              className="text-sm font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loadingMore ? "Loading..." : "Load more"}
+            </button>
+          </div>
+        )}
       </section>
     </main>
   );

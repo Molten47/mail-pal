@@ -11,22 +11,60 @@ export interface PriorityMail {
 }
 
 interface MailState {
-  items:   PriorityMail[];
-  loading: boolean;
-  error:   string | null;
+  items:       PriorityMail[];
+  nextCursor:  string | null;
+  hasMore:     boolean;
+  loading:     boolean;
+  loadingMore: boolean;
+  error:       string | null;
 }
 
-const initialState: MailState = { items: [], loading: false, error: null };
+const initialState: MailState = {
+  items:       [],
+  nextCursor:  null,
+  hasMore:     true,
+  loading:     false,
+  loadingMore: false,
+  error:       null,
+};
 
 const mailSlice = createSlice({
   name: "mail",
   initialState,
   reducers: {
-    setLoading(state)                                        { state.loading = true; state.error = null; },
-    setMail(state, action: PayloadAction<PriorityMail[]>)   { state.items = action.payload; state.loading = false; },
-    setError(state, action: PayloadAction<string>)          { state.error = action.payload; state.loading = false; },
+    setLoading(state) {
+      state.loading = true;
+      state.error = null;
+    },
+    setLoadingMore(state) {
+      state.loadingMore = true;
+      state.error = null;
+    },
+    setMailPage(
+      state,
+      action: PayloadAction<{ items: PriorityMail[]; nextCursor: string | null; hasMore: boolean }>
+    ) {
+      state.items      = action.payload.items;
+      state.nextCursor = action.payload.nextCursor;
+      state.hasMore     = action.payload.hasMore;
+      state.loading     = false;
+    },
+    appendMailPage(
+      state,
+      action: PayloadAction<{ items: PriorityMail[]; nextCursor: string | null; hasMore: boolean }>
+    ) {
+      state.items       = [...state.items, ...action.payload.items];
+      state.nextCursor   = action.payload.nextCursor;
+      state.hasMore      = action.payload.hasMore;
+      state.loadingMore  = false;
+    },
+    setError(state, action: PayloadAction<string>) {
+      state.error       = action.payload;
+      state.loading     = false;
+      state.loadingMore = false;
+    },
   },
 });
 
-export const { setLoading, setMail, setError } = mailSlice.actions;
+export const { setLoading, setLoadingMore, setMailPage, appendMailPage, setError } = mailSlice.actions;
 export default mailSlice.reducer;
