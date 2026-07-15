@@ -7,6 +7,7 @@ export interface PriorityMail {
   summary:      string;
   url_link:     string;
   category:     string | null;
+  message_id:   string | null;   // ← add this
   created_at:   string;
 }
 

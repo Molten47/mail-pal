@@ -1,4 +1,6 @@
 import { PriorityMail } from "@/store/mailSlice";
+import { openInGmail } from "@/lib/openInGmail";
+
 
 const categoryColors: Record<string, string> = {
   Professional: "bg-blue-100 text-blue-800",
@@ -43,14 +45,12 @@ export default function MailCard({ mail }: { mail: PriorityMail }) {
             day: "numeric", month: "short", year: "numeric"
           })}
         </span>
-        
-         <a href={mail.url_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          Open in Gmail →
-        </a>
+        <button
+        onClick={() => openInGmail(mail.message_id, mail.url_link)}
+        className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+      >
+        Open in Gmail →
+      </button>
       </div>
     </div>
   );
