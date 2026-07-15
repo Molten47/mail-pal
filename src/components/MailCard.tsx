@@ -46,11 +46,11 @@ export default function MailCard({ mail }: { mail: PriorityMail }) {
           })}
         </span>
         <button
-          onClick={() => openInGmail(mail.url_link)}
-          className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
-        >
-          Open in Gmail →
-        </button>
+        onClick={() => openInGmail(mail.url_link)}
+        className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors"
+      >
+        Open in Gmail →
+      </button>
       </div>
     </div>
   );
