@@ -7,7 +7,7 @@ export const useAuth = () => {
   const dispatch = useDispatch();
 
 const loginWithGoogle = () => {
-  window.location.href = `/api/auth/google/login`;
+  window.location.href = "/api/auth/google/login";
 };
 
   const logout = async () => {
